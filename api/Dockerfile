@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm install --ignore-scripts
 
 COPY prisma ./prisma
 RUN npx prisma generate
@@ -23,7 +23,7 @@ RUN apk add --no-cache openssl libc6-compat
 ENV NODE_ENV=production
 
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --ignore-scripts
 
 # Copy built artifacts and generated prisma client
 COPY --from=build /app/dist ./dist
