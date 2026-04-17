@@ -159,7 +159,7 @@ function renderQuestion(q: Question) { return q; }
     const submittingBox = document.getElementById("survey-submitting");
     let current = 0;
 
-    const apiUrl = (document.documentElement.dataset.apiUrl || "").replace(/\/+$/, "");
+    const getApiUrl = () => (document.documentElement.dataset.apiUrl || "").replace(/\/+$/, "");
 
     function updateProgress() {
       const pct = Math.round(((current) / sections.length) * 100);
@@ -245,7 +245,7 @@ function renderQuestion(q: Question) { return q; }
       form.style.display = "none";
 
       try {
-        const res = await fetch(`${apiUrl}/submit/${role}`, {
+        const res = await fetch(`${getApiUrl()}/submit/${role}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ role, answers: collect() }),
