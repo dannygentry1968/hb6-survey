@@ -1,0 +1,98 @@
+---
+import Base from "../layouts/Base.astro";
+import { API_URL, DONATE_URL } from "../lib/env";
+---
+<Base title="Thank you — HB 6 Impact Survey">
+  <section class="max-w-3xl mx-auto px-4 py-12">
+    <div class="card text-center" style="border-top: 4px solid var(--brand-gold);">
+      <h1>Thank you</h1>
+      <p class="mt-3 text-slate-700">
+        Your response helps the Violence-Free Schools Alliance hold Texas accountable
+        for what HB 6 promised. Results will be shared with educators, policymakers,
+        and the press.
+      </p>
+    </div>
+
+    <div class="card mt-6">
+      <h2 class="text-xl">Two ways to stay involved</h2>
+      <p class="mt-2 text-slate-700">
+        Neither of these is linked to your survey response. Both are optional.
+      </p>
+
+      <!-- Newsletter signup -->
+      <form id="newsletter-form" class="mt-6 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <div>
+          <label class="text-sm">Join the VFSA newsletter</label>
+          <input
+            type="email"
+            id="newsletter-email"
+            name="email"
+            class="input mt-1"
+            placeholder="you@school.edu"
+            required
+          />
+          <p class="hint">We'll email updates on HB 6 implementation, advocacy
+            opportunities, and safety resources. Unsubscribe anytime.</p>
+        </div>
+        <button type="submit" class="btn btn-primary self-end">Subscribe</button>
+      </form>
+      <p id="newsletter-msg" class="mt-2 text-sm hidden"></p>
+
+      <!-- Donate CTA -->
+      <div class="mt-8 pt-6 border-t border-slate-200 flex items-start gap-4">
+        <span
+          class="h-12 w-12 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0"
+          style="background-color: var(--brand-red);"
+          aria-hidden="true"
+        >♥</span>
+        <div class="flex-1">
+          <p class="font-semibold">Support VFSA's work</p>
+          <p class="text-sm text-slate-700 mt-1">
+            VFSA is funded by educators and families who believe every Texas child
+            and teacher deserves a safe classroom.
+          </p>
+          <a
+            href={DONATE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-accent mt-3"
+          >Donate via GoFundMe</a>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center mt-8">
+      <a href="/" class="underline text-slate-600">← Back to the home page</a>
+    </p>
+  </section>
+
+  <script define:vars={{ API_URL }}>
+    const form = document.getElementById("newsletter-form");
+    const msg = document.getElementById("newsletter-msg");
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("newsletter-email").value.trim();
+        msg.className = "mt-2 text-sm text-slate-600";
+        msg.textContent = "Signing you up…";
+        msg.classList.remove("hidden");
+
+        try {
+          const res = await fetch(`${API_URL.replace(/\/+$/, "")}/newsletter`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          if (!res.ok) throw new Error("Signup failed: " + res.status);
+          msg.className = "mt-2 text-sm text-emerald-700";
+          msg.textContent = "Thanks — you're on the list.";
+          form.reset();
+        } catch (err) {
+          msg.className = "mt-2 text-sm text-red-700";
+          msg.textContent = "Sorry, we couldn't subscribe you right now. Please try again later.";
+          console.error(err);
+        }
+      });
+    }
+  </script>
+</Base>

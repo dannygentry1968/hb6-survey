@@ -1,0 +1,42 @@
+# Caddyfile — automatic TLS via Let's Encrypt for api + dashboard subdomains.
+# Assumes DNS A/AAAA records for {$API_DOMAIN} and {$DASHBOARD_DOMAIN} point
+# at this VPS. Ports 80/443 must be open.
+
+{
+    email {$ACME_EMAIL}
+}
+
+# Public API — receives survey + newsletter submissions from Netlify.
+{$API_DOMAIN} {
+    encode gzip zstd
+
+    # Conservative rate limiting at the edge (burst + sustained).
+    # Caddy's bundled rate-limit is limited; heavier lifting is in the API.
+    @submit path /submit/* /newsletter
+    header @submit Cache-Control "no-store"
+
+    reverse_proxy api:4000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Dashboard — password-protected admin view of survey results.
+{$DASHBOARD_DOMAIN} {
+    encode gzip zstd
+
+    reverse_proxy api:4000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+}

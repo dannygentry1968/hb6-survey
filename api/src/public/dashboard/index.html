@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VFSA Dashboard · HB 6 Survey</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --navy:#0f2c4a; --blue:#1d4d8c; --red:#b91c1c; --gold:#d4a017; }
+    body { background:#f4f6fb; }
+    .card { @apply bg-white border border-slate-200 rounded-xl p-5 shadow-sm; }
+    .kpi { @apply text-3xl font-semibold tracking-tight; }
+    .muted { @apply text-slate-500 text-sm; }
+    .stat-title { @apply text-sm font-medium text-slate-600 mb-1; }
+    .dot-live { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.3 } }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div x-data="dashboard()" x-init="init()" class="max-w-7xl mx-auto px-4 py-6">
+
+    <header class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <span class="h-10 w-10 rounded-md" style="background: linear-gradient(135deg, var(--navy), var(--blue));"></span>
+        <div>
+          <h1 class="text-xl font-semibold leading-tight">VFSA · HB 6 Dashboard</h1>
+          <p class="text-xs text-slate-500 flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-emerald-500 dot-live"></span>
+            Live — refreshes every 5s
+            <span class="ml-3" x-text="'Last updated: ' + (lastUpdated || '—')"></span>
+          </p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a href="#" @click.prevent="exportCsv()"
+           class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
+          Download CSV
+        </a>
+        <button @click="logout()"
+           class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
+          Sign out
+        </button>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <section class="card mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label class="stat-title">Role</label>
+          <select x-model="filters.role" @change="load()" class="w-full rounded-md border-slate-300">
+            <option value="both">Both</option>
+            <option value="teacher">Teachers</option>
+            <option value="administrator">Administrators</option>
+          </select>
+        </div>
+        <div>
+          <label class="stat-title">Region</label>
+          <select x-model="filters.region" @change="load()" class="w-full rounded-md border-slate-300">
+            <option value="">All regions</option>
+            <template x-for="i in 20"><option :value="'region-' + i" x-text="'Region ' + i"></option></template>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+        <div>
+          <label class="stat-title">Since</label>
+          <input type="date" x-model="filters.since" @change="load()" class="w-full rounded-md border-slate-300" />
+        </div>
+        <div>
+          <label class="stat-title">Until</label>
+          <input type="date" x-model="filters.until" @change="load()" class="w-full rounded-md border-slate-300" />
+        </div>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="card">
+        <p class="stat-title">Total responses</p>
+        <p class="kpi" x-text="stats.totals ?? '—'"></p>
+      </div>
+      <div class="card">
+        <p class="stat-title">Teachers</p>
+        <p class="kpi" x-text="stats.byRole?.teacher ?? 0"></p>
+      </div>
+      <div class="card">
+        <p class="stat-title">Administrators</p>
+        <p class="kpi" x-text="stats.byRole?.administrator ?? 0"></p>
+      </div>
+      <div class="card">
+        <p class="stat-title">Newsletter signups</p>
+        <p class="kpi" x-text="stats.newsletterCount ?? 0"></p>
+      </div>
+    </section>
+
+    <!-- Charts row -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="card">
+        <p class="stat-title">Responses by day</p>
+        <canvas id="by-day-chart" height="120"></canvas>
+      </div>
+      <div class="card">
+        <p class="stat-title">Responses by TEA region</p>
+        <canvas id="by-region-chart" height="120"></canvas>
+      </div>
+    </section>
+
+    <!-- Headline perception charts -->
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold mb-3">Teacher perception — headline questions</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card"><p class="stat-title">Classroom safety improved (1–5 strongly disagree → strongly agree)</p><canvas data-qrole="teacher" data-qid="classroom_safety" height="120"></canvas></div>
+        <div class="card"><p class="stat-title">Learning env. improved for non-disruptive students</p><canvas data-qrole="teacher" data-qid="learning_env" height="120"></canvas></div>
+        <div class="card"><p class="stat-title">Behavior trend vs last year</p><canvas data-qrole="teacher" data-qid="behavior_trend" height="120"></canvas></div>
+        <div class="card"><p class="stat-title">Incidents experienced by teachers (assault/threat/verbal/witnessed)</p><canvas data-qrole="teacher" data-qid="incidents" height="120"></canvas></div>
+      </div>
+    </section>
+
+    <section class="mb-6">
+      <h2 class="text-lg font-semibold mb-3">Administrator perception — headline questions</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card"><p class="stat-title">HB 6 is reducing violence on my campus</p><canvas data-qrole="administrator" data-qid="reducing_violence" height="120"></canvas></div>
+        <div class="card"><p class="stat-title">HB 6 is harming vulnerable students</p><canvas data-qrole="administrator" data-qid="harming_vulnerable" height="120"></canvas></div>
+        <div class="card"><p class="stat-title">Staff assaults trend vs last year</p><canvas data-qrole="administrator" data-qid="assaults_trend" height="120"></canvas></div>
+        <div class="card"><p class="stat-title">Top implementation challenges</p><canvas data-qrole="administrator" data-qid="top_challenges" height="120"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Recent -->
+    <section class="card">
+      <p class="stat-title">Most recent responses</p>
+      <table class="w-full text-sm mt-2">
+        <thead class="text-slate-500 text-left">
+          <tr><th class="py-1">When</th><th class="py-1">Role</th><th class="py-1">Region</th></tr>
+        </thead>
+        <tbody>
+          <template x-for="r in stats.recent ?? []" :key="r.id">
+            <tr class="border-t border-slate-100">
+              <td class="py-1" x-text="new Date(r.createdAt).toLocaleString()"></td>
+              <td class="py-1 capitalize" x-text="r.role"></td>
+              <td class="py-1" x-text="r.region || '—'"></td>
+            </tr>
+          </template>
+          <tr x-show="!(stats.recent && stats.recent.length)"><td colspan="3" class="py-3 text-slate-400">No responses yet.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="muted mt-6 text-center">
+      VFSA · Responses are anonymous. Download CSV above for full export.
+    </p>
+  </div>
+
+  <script>
+    const labelMaps = {
+      agree:     { "1":"Strongly disagree", "2":"Disagree", "3":"Neutral", "4":"Agree", "5":"Strongly agree" },
+      direction: { "1":"Much worse", "2":"Worse", "3":"Same", "4":"Better", "5":"Much better" },
+      frequency: { "1":"Never", "2":"Rarely", "3":"Sometimes", "4":"Usually", "5":"Always" },
+      safety:    { "1":"Much less safe", "2":"Less safe", "3":"Same", "4":"Safer", "5":"Much safer" },
+      incidents: { assault:"Assault", threat:"Threat", verbal:"Verbal abuse", witnessed:"Witnessed" },
+      top_challenges: {
+        staffing:"Staffing", funding:"Funding", teacher_pushback:"Teacher pushback",
+        parent_pushback:"Parent pushback", legal:"Legal/compliance", mental_health:"Mental health",
+        due_process:"Due process", reporting:"Reporting", training:"Training", other:"Other",
+      },
+    };
+    const scaleFor = (qid) => {
+      const agrees = ["classroom_safety","learning_env","safety_trend","retaliation","admin_support",
+                      "teachers_supported","resources","reducing_violence","harming_vulnerable",
+                      "staff_safety","student_outcomes"];
+      const dirs   = ["behavior_trend","removals_trend","assaults_trend","daep_trend","expulsions_trend"];
+      const freqs  = ["admin_support"];
+      if (agrees.includes(qid)) return "agree";
+      if (dirs.includes(qid))   return "direction";
+      if (freqs.includes(qid))  return "frequency";
+      return null;
+    };
+
+    function dashboard() {
+      return {
+        filters: { role:"both", region:"", since:"", until:"" },
+        stats: {},
+        charts: {},
+        lastUpdated: "",
+        timer: null,
+
+        async init() {
+          await this.load();
+          this.timer = setInterval(() => this.load(), 5000);
+        },
+        async load() {
+          try {
+            const qs = new URLSearchParams();
+            for (const [k,v] of Object.entries(this.filters)) if (v) qs.set(k,v);
+            const res = await fetch("/dashboard/api/stats?" + qs.toString(), { credentials:"same-origin" });
+            if (res.status === 401) { window.location.href = "/dashboard/login"; return; }
+            this.stats = await res.json();
+            this.lastUpdated = new Date().toLocaleTimeString();
+            this.render();
+          } catch (e) { console.error(e); }
+        },
+        render() {
+          this.renderByDay();
+          this.renderByRegion();
+          document.querySelectorAll("canvas[data-qid]").forEach((c) => this.renderDistribution(c));
+        },
+        upsertChart(canvas, config) {
+          const key = canvas.id || canvas.dataset.qid + "_" + canvas.dataset.qrole;
+          if (this.charts[key]) { this.charts[key].data = config.data; this.charts[key].update(); return; }
+          this.charts[key] = new Chart(canvas, config);
+        },
+        renderByDay() {
+          const c = document.getElementById("by-day-chart");
+          const points = this.stats.byDay ?? [];
+          const data = {
+            labels: points.map((p) => new Date(p.day).toLocaleDateString()),
+            datasets: [{
+              label: "Responses",
+              data: points.map((p) => p.count),
+              borderColor: "#1d4d8c", backgroundColor: "#1d4d8c22", tension: 0.2, fill: true,
+            }],
+          };
+          this.upsertChart(c, { type: "line", data, options: { responsive: true, plugins: { legend: { display: false } } } });
+        },
+        renderByRegion() {
+          const c = document.getElementById("by-region-chart");
+          const br = this.stats.byRegion ?? {};
+          const entries = Object.entries(br).sort((a,b) => a[0].localeCompare(b[0]));
+          const data = {
+            labels: entries.map(([k]) => k === "unknown" ? "Unknown" : k.replace("region-", "R")),
+            datasets: [{ label: "Responses", data: entries.map(([,v]) => v), backgroundColor: "#0f2c4a" }],
+          };
+          this.upsertChart(c, { type: "bar", data, options: { responsive: true, plugins: { legend: { display: false } } } });
+        },
+        renderDistribution(canvas) {
+          const qid = canvas.dataset.qid, role = canvas.dataset.qrole;
+          const dist = this.stats.distributions?.[role]?.[qid] ?? {};
+          const scale = scaleFor(qid);
+          let labels, values;
+          if (scale) {
+            labels = ["1","2","3","4","5"].map((k) => labelMaps[scale][k]);
+            values = ["1","2","3","4","5"].map((k) => dist[k] ?? 0);
+          } else if (labelMaps[qid]) {
+            const keys = Object.keys(labelMaps[qid]);
+            labels = keys.map((k) => labelMaps[qid][k]);
+            values = keys.map((k) => dist[k] ?? 0);
+          } else {
+            const entries = Object.entries(dist);
+            labels = entries.map(([k]) => k);
+            values = entries.map(([,v]) => v);
+          }
+          this.upsertChart(canvas, {
+            type: "bar",
+            data: { labels, datasets: [{ data: values, backgroundColor: "#1d4d8c" }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, indexAxis: labels.length > 5 ? "y" : "x" },
+          });
+        },
+        exportCsv() {
+          const qs = new URLSearchParams();
+          for (const [k,v] of Object.entries(this.filters)) if (v) qs.set(k,v);
+          window.location.href = "/dashboard/api/export.csv?" + qs.toString();
+        },
+        async logout() {
+          await fetch("/dashboard/logout", { method: "POST", credentials: "same-origin" });
+          window.location.href = "/dashboard/login";
+        },
+      };
+    }
+  </script>
+</body>
+</html>

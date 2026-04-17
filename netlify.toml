@@ -1,0 +1,27 @@
+# Netlify build configuration for the public survey frontend (Astro).
+
+[build]
+  base    = "web"
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Environment variables for the Astro build must be set in Netlify's UI
+# (Site settings → Environment variables):
+#   PUBLIC_API_URL     = https://api.violencefreeschools.org
+#   PUBLIC_DONATE_URL  = https://www.gofundme.com/f/help-vfsa-make-schools-violencefree-zones
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options          = "DENY"
+    X-Content-Type-Options   = "nosniff"
+    Referrer-Policy          = "strict-origin-when-cross-origin"
+    Permissions-Policy       = "geolocation=(), camera=(), microphone=()"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

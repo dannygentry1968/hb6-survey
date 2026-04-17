@@ -1,0 +1,56 @@
+---
+import "../styles/global.css";
+interface Props { title: string; description?: string; }
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description ?? "Texas HB 6 implementation survey from Violence-Free Schools Alliance."} />
+    <meta name="robots" content="index,follow" />
+    <title>{title}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <header class="bg-white border-b border-slate-200">
+      <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-3" aria-label="Violence-Free Schools Alliance home">
+          <span
+            class="inline-block h-9 w-9 rounded-md"
+            style="background: linear-gradient(135deg, var(--brand-navy), var(--brand-blue));"
+            aria-hidden="true"
+          ></span>
+          <span class="font-semibold text-slate-900 leading-tight">
+            Violence-Free Schools Alliance
+            <span class="block text-xs font-normal text-slate-500">HB 6 Impact Survey</span>
+          </span>
+        </a>
+        <nav class="hidden sm:flex gap-4 text-sm font-medium">
+          <a class="text-slate-700 hover:text-slate-900" href="/teacher">Teacher survey</a>
+          <a class="text-slate-700 hover:text-slate-900" href="/administrator">Administrator survey</a>
+          <a class="text-slate-700 hover:text-slate-900" href="https://violencefreeschools.org">VFSA.org ↗</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="flex-1">
+      <slot />
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-16">
+      <div class="max-w-5xl mx-auto px-4 py-8 text-sm text-slate-600 grid sm:grid-cols-2 gap-4">
+        <div>
+          <p class="font-semibold text-slate-800">Violence-Free Schools Alliance</p>
+          <p>Advocacy and research for safe classrooms across Texas.</p>
+        </div>
+        <div class="sm:text-right">
+          <p>Responses are anonymous. No IP addresses, names, or identifiers are attached to your answers.</p>
+          <p class="mt-1"><a class="underline" href="https://violencefreeschools.org">violencefreeschools.org</a></p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,40 @@
+// Prisma schema for HB 6 Survey
+//
+// Two entirely separate tables for survey responses vs. newsletter signups —
+// there is no foreign key linking them, so even if someone submits a survey
+// and signs up for the newsletter, there is no way to correlate them.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Submission {
+  id        String   @id @default(cuid())
+  role      Role
+  region    String?        // e.g. "region-5" or "unknown"
+  // Dynamic answer payload — all Likert/single/multi/text answers live here.
+  // Using Json keeps the schema future-proof as the question bank evolves.
+  answers   Json
+  createdAt DateTime @default(now())
+
+  @@index([role, createdAt])
+  @@index([region])
+}
+
+enum Role {
+  teacher
+  administrator
+}
+
+model NewsletterSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

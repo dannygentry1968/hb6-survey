@@ -1,0 +1,265 @@
+---
+import type { SurveyDef, Question } from "../lib/questions";
+import { likertLabels } from "../lib/questions";
+
+interface Props { survey: SurveyDef; }
+const { survey } = Astro.props;
+
+function renderQuestion(q: Question) { return q; }
+---
+<section
+  class="max-w-3xl mx-auto px-4 py-8"
+  data-survey-root
+  data-role={survey.role}
+  data-survey-def={JSON.stringify(survey)}
+>
+  <header class="mb-6">
+    <p class="uppercase tracking-wide text-xs font-semibold text-slate-500">
+      {survey.role === "teacher" ? "Teacher version" : "Administrator version"}
+    </p>
+    <h1 class="mt-1">{survey.title}</h1>
+    <p class="mt-3 text-slate-700">{survey.intro}</p>
+    <div class="mt-5 progress" aria-hidden="true">
+      <div class="progress-bar" data-progress style="width: 0%;"></div>
+    </div>
+    <p class="mt-2 text-sm text-slate-500" data-section-counter></p>
+  </header>
+
+  <form id="survey-form" novalidate>
+    {survey.sections.map((section, idx) => (
+      <fieldset
+        class="card mb-6 section"
+        data-section
+        data-index={idx}
+        style={idx === 0 ? "" : "display:none"}
+      >
+        <legend class="text-xl font-semibold mb-4">{section.title}</legend>
+
+        {section.questions.map((q) => (
+          <div class="field" data-question-id={q.id}>
+            <label class={q.required ? "req" : ""}>{q.label}</label>
+            {q.hint && <p class="hint">{q.hint}</p>}
+
+            {q.type === "single" && (
+              <div class="mt-3 space-y-2">
+                {q.options.map((opt) => (
+                  <label class="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                    <input
+                      type="radio"
+                      name={q.id}
+                      value={opt.value}
+                      required={q.required}
+                      class="h-4 w-4"
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {q.type === "multi" && (
+              <div class="mt-3 space-y-2" data-multi-max={q.max ?? 0}>
+                {q.options.map((opt) => (
+                  <label class="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                    <input
+                      type="checkbox"
+                      name={q.id}
+                      value={opt.value}
+                      class="h-4 w-4"
+                    />
+                    <span>{opt.label}</span>
+                  </label>
+                ))}
+                {q.max && (
+                  <p class="hint">Pick up to {q.max}.</p>
+                )}
+              </div>
+            )}
+
+            {q.type === "likert5" && (
+              <div class="likert mt-3" role="radiogroup" aria-label={q.label}>
+                {likertLabels[q.scale].map((lbl, i) => (
+                  <label>
+                    <input
+                      type="radio"
+                      name={q.id}
+                      value={String(i + 1)}
+                      required={q.required}
+                    />
+                    <span>{lbl}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {q.type === "text" && (
+              <input
+                type="text"
+                class="input mt-3"
+                name={q.id}
+                maxlength={q.maxLength ?? 500}
+                required={q.required}
+              />
+            )}
+
+            {q.type === "textarea" && (
+              <textarea
+                class="textarea mt-3"
+                name={q.id}
+                maxlength={q.maxLength ?? 800}
+                required={q.required}
+              ></textarea>
+            )}
+
+            {q.type === "email" && (
+              <input
+                type="email"
+                class="input mt-3"
+                name={q.id}
+                required={q.required}
+              />
+            )}
+          </div>
+        ))}
+
+        <div class="flex justify-between items-center mt-6 gap-3">
+          {idx > 0 ? (
+            <button type="button" class="btn btn-ghost" data-prev>← Back</button>
+          ) : (
+            <span></span>
+          )}
+          {idx < survey.sections.length - 1 ? (
+            <button type="button" class="btn btn-primary" data-next>Next →</button>
+          ) : (
+            <button type="submit" class="btn btn-accent" data-submit>Submit survey</button>
+          )}
+        </div>
+
+        <p class="text-sm text-red-700 mt-3 hidden" data-section-error>
+          Please answer all required questions before continuing.
+        </p>
+      </fieldset>
+    ))}
+  </form>
+
+  <div id="survey-submitting" class="card text-center hidden">
+    <p class="text-slate-700">Submitting your response…</p>
+  </div>
+</section>
+
+<script define:vars={{ }}>
+  // Client-side navigation, validation, and submission.
+  const root = document.querySelector("[data-survey-root]");
+  if (root) {
+    const role = root.getAttribute("data-role");
+    const sections = Array.from(root.querySelectorAll("[data-section]"));
+    const progressBar = root.querySelector("[data-progress]");
+    const counter = root.querySelector("[data-section-counter]");
+    const form = document.getElementById("survey-form");
+    const submittingBox = document.getElementById("survey-submitting");
+    let current = 0;
+
+    const apiUrl = (document.documentElement.dataset.apiUrl || "").replace(/\/+$/, "");
+
+    function updateProgress() {
+      const pct = Math.round(((current) / sections.length) * 100);
+      if (progressBar) progressBar.style.width = pct + "%";
+      if (counter) counter.textContent = `Section ${current + 1} of ${sections.length}`;
+    }
+
+    function show(idx) {
+      sections.forEach((s, i) => { s.style.display = i === idx ? "" : "none"; });
+      current = idx;
+      updateProgress();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function validateSection(sectionEl) {
+      // Use native HTML5 constraint validation scoped to this section.
+      const invalid = sectionEl.querySelectorAll(":invalid");
+      const errEl = sectionEl.querySelector("[data-section-error]");
+      if (invalid.length > 0) {
+        errEl?.classList.remove("hidden");
+        invalid[0].focus();
+        return false;
+      }
+      errEl?.classList.add("hidden");
+
+      // Enforce multi-select max
+      const multis = sectionEl.querySelectorAll("[data-multi-max]");
+      for (const m of multis) {
+        const max = parseInt(m.getAttribute("data-multi-max") || "0", 10);
+        if (max > 0) {
+          const checked = m.querySelectorAll("input[type=checkbox]:checked").length;
+          if (checked > max) {
+            errEl?.classList.remove("hidden");
+            if (errEl) errEl.textContent = `Please select at most ${max} options.`;
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    root.addEventListener("click", (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (target.matches("[data-next]")) {
+        const section = sections[current];
+        if (validateSection(section)) show(current + 1);
+      } else if (target.matches("[data-prev]")) {
+        show(current - 1);
+      }
+    });
+
+    function collect() {
+      const fd = new FormData(form);
+      const data = {};
+      // Collect single-valued fields by name and multi-valued as arrays.
+      const namesSeen = new Set();
+      for (const [name, value] of fd.entries()) {
+        if (namesSeen.has(name)) {
+          if (Array.isArray(data[name])) data[name].push(value);
+          else data[name] = [data[name], value];
+        } else {
+          data[name] = value;
+          namesSeen.add(name);
+        }
+      }
+      // Ensure checkbox groups with zero selections are represented as []:
+      const cbNames = new Set();
+      form.querySelectorAll("input[type=checkbox]").forEach((cb) => cbNames.add(cb.name));
+      for (const n of cbNames) {
+        if (!(n in data)) data[n] = [];
+        else if (!Array.isArray(data[n])) data[n] = [data[n]];
+      }
+      return data;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const section = sections[current];
+      if (!validateSection(section)) return;
+
+      submittingBox?.classList.remove("hidden");
+      form.style.display = "none";
+
+      try {
+        const res = await fetch(`${apiUrl}/submit/${role}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role, answers: collect() }),
+        });
+        if (!res.ok) throw new Error("Submit failed: " + res.status);
+        window.location.href = `/thanks?role=${encodeURIComponent(role || "")}`;
+      } catch (err) {
+        submittingBox?.classList.add("hidden");
+        form.style.display = "";
+        alert("Sorry, we couldn't submit your response. Please try again in a moment.");
+        console.error(err);
+      }
+    });
+
+    updateProgress();
+  }
+</script>

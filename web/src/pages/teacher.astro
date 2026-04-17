@@ -1,0 +1,14 @@
+---
+import Base from "../layouts/Base.astro";
+import Survey from "../components/Survey.astro";
+import { teacherSurvey } from "../lib/questions";
+import { API_URL } from "../lib/env";
+---
+<Base title="Teacher Survey — HB 6 Impact">
+  <div data-api-url={API_URL}>
+    <Survey survey={teacherSurvey} />
+  </div>
+  <script define:vars={{ API_URL }}>
+    document.documentElement.dataset.apiUrl = API_URL;
+  </script>
+</Base>

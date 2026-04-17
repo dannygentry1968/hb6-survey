@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-navy: #0f2c4a;
+  --brand-blue: #1d4d8c;
+  --brand-red:  #b91c1c;
+  --brand-gold: #d4a017;
+  --brand-bg:   #f7f9fc;
+  --brand-text: #0f172a;
+}
+
+@layer base {
+  html {
+    font-family:
+      ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--brand-bg);
+    color: var(--brand-text);
+    scroll-behavior: smooth;
+  }
+  body { @apply antialiased; }
+
+  h1 { @apply text-3xl md:text-4xl font-semibold leading-tight tracking-tight; }
+  h2 { @apply text-2xl md:text-3xl font-semibold leading-tight tracking-tight; }
+  h3 { @apply text-xl font-semibold; }
+  label { @apply block font-medium text-slate-800; }
+
+  /* Focus visibility everywhere — accessibility */
+  :focus-visible {
+    outline: 3px solid var(--brand-gold);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-5 py-3
+           font-semibold transition shadow-sm;
+  }
+  .btn-primary {
+    background-color: var(--brand-blue);
+    color: #fff;
+  }
+  .btn-primary:hover { background-color: var(--brand-navy); }
+  .btn-accent {
+    background-color: var(--brand-red);
+    color: #fff;
+  }
+  .btn-accent:hover { filter: brightness(0.92); }
+  .btn-ghost {
+    @apply border border-slate-300 text-slate-800 hover:bg-slate-50;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8;
+  }
+
+  .field { @apply mb-6; }
+  .field label { @apply mb-2; }
+  .field .hint { @apply text-sm text-slate-500 mt-1; }
+
+  .input, .select, .textarea {
+    @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2
+           text-base shadow-sm;
+  }
+  .input:focus, .select:focus, .textarea:focus {
+    border-color: var(--brand-blue);
+  }
+  .textarea { min-height: 6rem; }
+
+  /* Likert / radio group */
+  .likert { @apply grid grid-cols-1 sm:grid-cols-5 gap-2; }
+  .likert label {
+    @apply flex items-center justify-center text-center cursor-pointer
+           rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
+           transition;
+  }
+  .likert input { @apply sr-only; }
+  .likert input:checked + span {
+    background-color: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+  }
+  .likert label:has(input:checked) {
+    background-color: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+  }
+
+  /* Required asterisk */
+  .req::after {
+    content: " *";
+    color: var(--brand-red);
+    font-weight: 700;
+  }
+
+  /* Progress bar */
+  .progress {
+    @apply h-2 w-full rounded-full bg-slate-200 overflow-hidden;
+  }
+  .progress-bar {
+    @apply h-full transition-all;
+    background-color: var(--brand-blue);
+  }
+}
